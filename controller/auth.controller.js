@@ -3,6 +3,9 @@ const { ResponseTemplate } = require('../helper/template.helper')
 const transporter = require('../lib/nodemailer')
 const { PrismaClient } = require('@prisma/client')
 
+const io = require('socket.io-client')
+const socket = io(process.env.BASE_URL)
+
 const prisma = new PrismaClient()
 var jwt = require('jsonwebtoken')
 
@@ -50,7 +53,15 @@ async function Create(req, res) {
                 name: true,
                 email: true
             },
-        });
+        })
+
+        const userId = userView.id
+
+        socket.emit('newAccount', userId)
+
+        socket.on('welcome', (message) => {
+            console.log('Welcome message:', message)
+        })
 
         let resp = ResponseTemplate(userView, 'success, please check your email for verification', null, 200)
         res.status(200).json(resp);
@@ -129,9 +140,9 @@ async function verifyEmail(req, res) {
 
     } catch (error) {
         let resp = ResponseTemplate(null, 'internal server error', error, 500)
+        Sentry.captureException(error)
         res.status(500).json(resp)
         return
-
     }
 }
 
@@ -173,9 +184,9 @@ async function forgotPassword(req, res) {
 
     } catch (error) {
         let resp = ResponseTemplate(null, 'internal server error', error, 500)
+        Sentry.captureException(error)
         res.status(500).json(resp)
         return
-
     }
 }
 
@@ -187,7 +198,7 @@ async function resetPassword(req, res) {
 
     try {
 
-        const user = jwt.verify(token, process.env.SECRET_KEY)
+        const user = await jwt.verify(token, process.env.SECRET_KEY)
 
         const encryptedPassword = await HashPassword(newPassword)
 
@@ -197,16 +208,24 @@ async function resetPassword(req, res) {
                 password: encryptedPassword,
             },
         })
-        
+
+        const userId = user.id
+
+        socket.emit('passwordChanged', userId)
+
+        socket.on('passwordChangedSuccess', (message) => {
+            console.log('Password changed:', message)
+        })
+
         let resp = ResponseTemplate(null, 'Password reset successfully', null, 200)
         res.status(200).json(resp);
         return
 
     } catch (error) {
         let resp = ResponseTemplate(null, 'internal server error', error, 500)
+        Sentry.captureException(error)
         res.status(500).json(resp)
         return
-
     }
 }
 
