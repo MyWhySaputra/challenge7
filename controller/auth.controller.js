@@ -141,6 +141,18 @@ async function forgotPassword(req, res) {
 
     try {
 
+        const checkUser = await prisma.user.findUnique({
+            where: {
+                email: email
+            }
+        })
+
+        if (checkUser === null) {
+            let resp = ResponseTemplate(null, 'email is not found or incorrect', null, 400)
+            res.status(400).json(resp)
+            return
+        }
+
         const token = jwt.sign({
             id: checkUser.id,
             email: checkUser.email,
@@ -151,11 +163,42 @@ async function forgotPassword(req, res) {
         await transporter.sendMail({
             from: process.env.EMAIL_SMTP, 
             to: email, 
-            subject: "Verification your email",
-            html: `<a href="${process.env.BASE_URL}api/v1/auth/verify?email=${payload.email}">Click here to verify your email</a>`,
+            subject: "Reset your password",
+            html: `Copy this link = ${process.env.BASE_URL}api/v1/auth/reset-password?token=${token}`,
         })
 
         let resp = ResponseTemplate(null, 'your email has been verified', null, 200)
+        res.status(200).json(resp);
+        return
+
+    } catch (error) {
+        let resp = ResponseTemplate(null, 'internal server error', error, 500)
+        res.status(500).json(resp)
+        return
+
+    }
+}
+
+async function resetPassword(req, res) {
+
+    const { newPassword } = req.body
+
+    const token = req.query.token
+
+    try {
+
+        const user = jwt.verify(token, process.env.SECRET_KEY)
+
+        const encryptedPassword = await HashPassword(newPassword)
+
+        await prisma.user.update({
+            where: { id: user.id },
+            data: {
+                password: encryptedPassword,
+            },
+        })
+        
+        let resp = ResponseTemplate(null, 'Password reset successfully', null, 200)
         res.status(200).json(resp);
         return
 
@@ -171,5 +214,6 @@ module.exports = {
     Create,
     Login,
     verifyEmail,
-
+    forgotPassword,
+    resetPassword
 }
