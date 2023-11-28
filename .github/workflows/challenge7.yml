@@ -11,5 +11,5 @@ jobs:
             node-version: '16'
       - run: npm install -g bats
       - run: npm install nodemon prisma --save-dev
-      - run: npm install bcrypt express imagekit joi jsonwebtoken morgan multer swagger-jsdoc swagger-ui-express @sentry/node
+      - run: npm install bcrypt express nodemailer joi jsonwebtoken morgan multer socket.io swagger-jsdoc swagger-ui-express @sentry/node
       - run: bats -v
