@@ -31,9 +31,11 @@ io.on('connection', async (socket) => {
 
         const user = await jwt.verify(token, process.env.SECRET_KEY)
 
-        socket.on(user, (data) => {
-            io.emit(user, data)
+        socket.on(token, (data) => {
+            io.emit(token, data)
         })
+
+        socket.emit(token, `welcome ${user.email}`)
 
         socket.on('disconnect', () => {
             console.log(`user ${user.email} disconnected`)

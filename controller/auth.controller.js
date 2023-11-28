@@ -175,7 +175,7 @@ async function forgotPassword(req, res) {
             html: `Copy this link = ${process.env.BASE_URL}api/v1/auth/reset-password?token=${token}`,
         })
 
-        let resp = ResponseTemplate(null, 'your email has been verified', null, 200)
+        let resp = ResponseTemplate(null, 'check your email', null, 200)
         res.status(200).json(resp);
         return
 
@@ -191,7 +191,7 @@ async function resetPassword(req, res) {
 
     const { newPassword } = req.body
 
-    const token = req.query
+    const { token } = req.query
 
     try {
 
