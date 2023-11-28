@@ -12,7 +12,20 @@ function ComparePassword(pass, hashPassword) {
     return compare
 }
 
+function HashToken(token) {
+    const salt = bcrypt.genSaltSync(4)
+    const hash = bcrypt.hashSync(token, salt)
+    return hash
+}
+
+function CompareToken(token, hashToken) {
+    const compare = bcrypt.compareSync(token, hashToken)
+    return compare
+}
+
 module.exports = {
     HashPassword,
-    ComparePassword
+    ComparePassword,
+    HashToken,
+    CompareToken
 }

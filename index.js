@@ -5,6 +5,10 @@ const http = require('http').Server(app)
 const io = require('socket.io')(http)
 const router = require('./routes/routes')
 const jwt = require('jsonwebtoken')
+const { CompareToken } = require('./helper/hash_pass_helper')
+const { PrismaClient } = require('@prisma/client')
+
+const prisma = new PrismaClient()
 
 const initializeSentry = require('./lib/Sentry')
 
@@ -23,7 +27,7 @@ app.use('/', router)
 
 io.on('connection', async (socket) => {
     try {
-        const { token } = socket.handshake.headers
+        const { token, event } = socket.handshake.headers
 
         if (!token) {
             throw new Error('User not authenticated')
@@ -31,14 +35,35 @@ io.on('connection', async (socket) => {
 
         const user = await jwt.verify(token, process.env.SECRET_KEY)
 
-        socket.on(token, (data) => {
-            io.emit(token, data)
+        const checkTemp = await prisma.temp.findUnique({
+            where: {
+                email: user.email
+            }
         })
 
-        socket.emit(token, `welcome ${user.email}`)
+        const welcome = 'welcome'
 
-        socket.on('disconnect', () => {
+        const password = 'success'
+
+        const notif1 = await CompareToken(welcome, checkTemp.hashtoken)
+
+        const notif2 = await CompareToken(password, checkTemp.hashtoken)
+
+        if (notif1) {
+            var pesan = 'wellcome'
+        } else if (notif2) {
+            var pesan = 'Your password has been changed !!!'
+        }
+
+        socket.emit(event, pesan)
+
+        socket.on('disconnect', async () => {
             console.log(`user ${user.email} disconnected`)
+            await prisma.temp.delete({
+                where: {
+                    email: user.email
+                }
+            })
         })
     } catch (error) {
         console.error(`Socket error: ${error.message}`)

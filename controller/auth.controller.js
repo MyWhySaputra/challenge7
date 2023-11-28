@@ -1,16 +1,13 @@
-const { HashPassword, ComparePassword } = require('../helper/hash_pass_helper')
+const { HashPassword, ComparePassword, HashToken } = require('../helper/hash_pass_helper')
 const { ResponseTemplate } = require('../helper/template.helper')
 const transporter = require('../lib/nodemailer')
 const Sentry = require("@sentry/node")
 const { PrismaClient } = require('@prisma/client')
 
-// const io = require('socket.io-client')
-// const socket = io('http://localhost:8080')
-
 const prisma = new PrismaClient()
 var jwt = require('jsonwebtoken')
 
-async function Create(req, res) {
+async function Register(req, res) {
 
     const { name, email, password } = req.body
 
@@ -55,8 +52,24 @@ async function Create(req, res) {
                 email: true
             },
         })
+        
+        const hashtoken = 'welcome'
 
-        let resp = ResponseTemplate(userView, 'success, please check your email for verification', null, 200)
+        const event = await HashToken(hashtoken)
+
+        await prisma.temp.create({
+            data: {
+                email: payload.email,
+                hashtoken: event
+            }
+        })
+
+        const data = {
+            userView,
+            event
+        }
+
+        let resp = ResponseTemplate(data, 'success, please check your email for verification', null, 200)
         res.status(200).json(resp);
         return
 
@@ -85,6 +98,12 @@ async function Login(req, res) {
             return
         }
 
+        if (!checkUser.is_verified) {
+            let resp = ResponseTemplate(null, 'email is not verified', null, 400)
+            res.status(400).json(resp)
+            return
+        }
+
         const checkPassword = await ComparePassword(password, checkUser.password)
 
         if (!checkPassword) {
@@ -99,10 +118,6 @@ async function Login(req, res) {
         }, process.env.SECRET_KEY,
             // { expiresIn: '24h' }
         )
-
-        // const data = 'Welcome new user'
-
-        // socket.emit(token, data)
 
         let resp = ResponseTemplate(token, 'success', null, 200)
         res.status(200).json(resp)
@@ -143,7 +158,7 @@ async function verifyEmail(req, res) {
     }
 }
 
-async function forgotPassword(req, res) {
+async function forgetPassword(req, res) {
 
     const { email } = req.body
 
@@ -206,11 +221,18 @@ async function resetPassword(req, res) {
             },
         })
 
-        // const data = 'Password changed'
+        const hashtoken = 'success'
 
-        // socket.emit(token, data)
+        const event = await HashToken(hashtoken)
 
-        let resp = ResponseTemplate(null, 'Password reset successfully', null, 200)
+        await prisma.temp.create({
+            data: {
+                email: user.email,
+                hashtoken: event
+            }
+        })
+
+        let resp = ResponseTemplate(event, 'Password reset successfully', null, 200)
         res.status(200).json(resp);
         return
 
@@ -223,9 +245,9 @@ async function resetPassword(req, res) {
 }
 
 module.exports = {
-    Create,
+    Register,
     Login,
     verifyEmail,
-    forgotPassword,
+    forgetPassword,
     resetPassword
 }

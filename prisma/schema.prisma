@@ -20,3 +20,9 @@ model user {
   updateAt    DateTime? @default(now())
   deletedAt   DateTime?
 }
+
+model temp {
+  id          Int       @id @default(autoincrement())
+  email       String    @db.VarChar(100) @unique
+  hashtoken   String    @db.VarChar(255)
+}
