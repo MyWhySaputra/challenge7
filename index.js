@@ -1,12 +1,10 @@
 require('dotenv').config()
 const express = require('express')
-const http = require('http')
-const socketIo = require('socket.io')
-
 const app = express()
-const server = http.createServer(app)
-const io = socketIo(server)
+const http = require('http').Server(app)
+const io = require('socket.io')(http)
 const router = require('./routes/routes')
+const jwt = require('jsonwebtoken')
 
 const initializeSentry = require('./lib/Sentry')
 
@@ -17,31 +15,31 @@ const port = process.env.PORT || 3000
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 
-app.use('/', router)
-
-app.listen(port, () => {
+http.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
 })
 
-const connectedUsers = {};
+app.use('/', router)
 
-io.on('connection', (socket) => {
-    console.log('User connected')
-    
-    socket.on('newAccount', (userId) => {
-        connectedUsers[userId] = socket
-        socket.userId = userId
-        io.to(socket.id).emit('welcome', 'Selamat datang di aplikasi!')
-    })
-    
-    socket.on('passwordChanged', (userId) => {
-        if (connectedUsers[userId]) {
-            io.to(connectedUsers[userId].id).emit('passwordChangedSuccess', 'Password berhasil diubah!')
+io.on('connection', async (socket) => {
+    try {
+        const { token } = socket.handshake.headers
+
+        if (!token) {
+            throw new Error('User not authenticated')
         }
-    })
 
-    socket.on('disconnect', () => {
-        console.log('User disconnected')
-        delete connectedUsers[socket.userId]
-    })
+        const user = await jwt.verify(token, process.env.SECRET_KEY)
+
+        socket.on(user, (data) => {
+            io.emit(user, data)
+        })
+
+        socket.on('disconnect', () => {
+            console.log(`user ${user.email} disconnected`)
+        })
+    } catch (error) {
+        console.error(`Socket error: ${error.message}`)
+        socket.disconnect(true)
+    }
 })

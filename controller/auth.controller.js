@@ -1,10 +1,11 @@
 const { HashPassword, ComparePassword } = require('../helper/hash_pass_helper')
 const { ResponseTemplate } = require('../helper/template.helper')
 const transporter = require('../lib/nodemailer')
+const Sentry = require("@sentry/node")
 const { PrismaClient } = require('@prisma/client')
 
-const io = require('socket.io-client')
-const socket = io(process.env.BASE_URL)
+// const io = require('socket.io-client')
+// const socket = io('http://localhost:8080')
 
 const prisma = new PrismaClient()
 var jwt = require('jsonwebtoken')
@@ -55,14 +56,6 @@ async function Create(req, res) {
             },
         })
 
-        const userId = userView.id
-
-        socket.emit('newAccount', userId)
-
-        socket.on('welcome', (message) => {
-            console.log('Welcome message:', message)
-        })
-
         let resp = ResponseTemplate(userView, 'success, please check your email for verification', null, 200)
         res.status(200).json(resp);
         return
@@ -105,7 +98,11 @@ async function Login(req, res) {
             email: checkUser.email,
         }, process.env.SECRET_KEY,
             // { expiresIn: '24h' }
-        );
+        )
+
+        // const data = 'Welcome new user'
+
+        // socket.emit(token, data)
 
         let resp = ResponseTemplate(token, 'success', null, 200)
         res.status(200).json(resp)
@@ -194,7 +191,7 @@ async function resetPassword(req, res) {
 
     const { newPassword } = req.body
 
-    const token = req.query.token
+    const token = req.query
 
     try {
 
@@ -209,13 +206,9 @@ async function resetPassword(req, res) {
             },
         })
 
-        const userId = user.id
+        // const data = 'Password changed'
 
-        socket.emit('passwordChanged', userId)
-
-        socket.on('passwordChangedSuccess', (message) => {
-            console.log('Password changed:', message)
-        })
+        // socket.emit(token, data)
 
         let resp = ResponseTemplate(null, 'Password reset successfully', null, 200)
         res.status(200).json(resp);
