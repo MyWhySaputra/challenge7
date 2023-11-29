@@ -50,20 +50,21 @@ io.on('connection', async (socket) => {
         const notif2 = await CompareToken(password, checkTemp.hashtoken)
 
         if (notif1) {
-            var pesan = 'wellcome'
+            var pesan = 'welcome new user !!!'
         } else if (notif2) {
             var pesan = 'Your password has been changed !!!'
         }
 
         socket.emit(event, pesan)
 
+        await prisma.temp.delete({
+            where: {
+                email: user.email
+            }
+        })
+        
         socket.on('disconnect', async () => {
             console.log(`user ${user.email} disconnected`)
-            await prisma.temp.delete({
-                where: {
-                    email: user.email
-                }
-            })
         })
     } catch (error) {
         console.error(`Socket error: ${error.message}`)

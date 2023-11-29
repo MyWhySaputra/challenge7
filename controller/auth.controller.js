@@ -232,7 +232,12 @@ async function resetPassword(req, res) {
             }
         })
 
-        let resp = ResponseTemplate(event, 'Password reset successfully', null, 200)
+        const data = {
+            data: null,
+            event
+        }
+
+        let resp = ResponseTemplate(data, 'Password reset successfully', null, 200)
         res.status(200).json(resp);
         return
 
